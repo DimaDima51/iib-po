@@ -90,10 +90,10 @@ void DrawManager::createGLContext(){
     vertexes.reserve(4);
     
     // вбиваем данные о вершинах
-    vertexes.push_back(Vertex(vec2(0, displaySize.y),        vec2(0, 1)));
-    vertexes.push_back(Vertex(vec2(0, 0),              vec2(0, 0)));
-    vertexes.push_back(Vertex(vec2(displaySize.x, displaySize.y),  vec2(1, 1)));
-    vertexes.push_back(Vertex(vec2(displaySize.x, 0),        vec2(1, 0)));
+    vertexes.push_back(Vertex(vec2(0, displaySize.y),        vec2(0, 0)));
+    vertexes.push_back(Vertex(vec2(0, 0),              vec2(0, 1)));
+    vertexes.push_back(Vertex(vec2(displaySize.x, displaySize.y),  vec2(1, 0)));
+    vertexes.push_back(Vertex(vec2(displaySize.x, 0),        vec2(1, 1)));
     
     // VBO, данные о вершинах
     glGenBuffers (1, &_vbo);
