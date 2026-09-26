@@ -5,7 +5,6 @@
 extern "C"
 {
 #define HAVE_STDINT_H 1
-#include <libyuv.h>
 #include <vector>
 }
 
@@ -515,21 +514,28 @@ void WebMVideoDecoder::decodeNewFrame()
                 if (_withAlpha && alphaFrameImage != nullptr)
                 {
                     // конвертируем YUV в RGBA с альфой
-                    libyuv::I420AlphaToARGB(frameImage->planes[VPX_PLANE_Y], frameImage->stride[VPX_PLANE_Y],
-                                            frameImage->planes[VPX_PLANE_U], frameImage->stride[VPX_PLANE_U],
-                                            frameImage->planes[VPX_PLANE_V], frameImage->stride[VPX_PLANE_V],
-                                            alphaFrameImage->planes[VPX_PLANE_Y], alphaFrameImage->stride[VPX_PLANE_Y],
-                                            _decodedBuffer, dstStride,
-                                            frameWidth, frameHeight, 0);
+                    xgen::video::yuv420AToRGBA(frameWidth, frameHeight,
+                                               frameImage->planes[VPX_PLANE_Y],
+                                               frameImage->planes[VPX_PLANE_U],
+                                               frameImage->planes[VPX_PLANE_V],
+                                               alphaFrameImage->planes[VPX_PLANE_Y],
+                                               frameImage->stride[VPX_PLANE_Y],
+                                               frameImage->stride[VPX_PLANE_U],
+                                               frameImage->stride[VPX_PLANE_V],
+                                               alphaFrameImage->stride[VPX_PLANE_Y],
+                                               _decodedBuffer);
                 }
                 else
                 {
-                    // конвертируем YUV в RGB без альфы
-                    libyuv::I420ToRGB24(frameImage->planes[VPX_PLANE_Y], frameImage->stride[VPX_PLANE_Y],
-                                        frameImage->planes[VPX_PLANE_U], frameImage->stride[VPX_PLANE_U],
-                                        frameImage->planes[VPX_PLANE_V], frameImage->stride[VPX_PLANE_V],
-                                        _decodedBuffer, dstStride,
-                                        frameWidth, frameHeight);
+                    // конвертируем YUV в RGBA без альфы
+                    xgen::video::yuv420ToRGBA(frameWidth, frameHeight,
+                                              frameImage->planes[VPX_PLANE_Y],
+                                              frameImage->planes[VPX_PLANE_U],
+                                              frameImage->planes[VPX_PLANE_V],
+                                              frameImage->stride[VPX_PLANE_Y],
+                                              frameImage->stride[VPX_PLANE_U],
+                                              frameImage->stride[VPX_PLANE_V],
+                                              _decodedBuffer);
                 }
             }
             speedtest_end(CONVERT);
@@ -587,9 +593,9 @@ void WebMVideoDecoder::copyDataToTexture(uint textureid)
     // выводим в текстуру
     if (_decodedBuffer)
     {
-        // CODE HERE!!!
         glBindTexture(GL_TEXTURE_2D, textureid);
-        glTexSubImage1D(GL_TEXTURE_2D, 0, 0, _nestegVideoParams.width, GL_RGBA, GL_UNSIGNED_BYTE, _decodedBuffer);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _nestegVideoParams.width, _nestegVideoParams.height, 
+                        GL_RGBA, GL_UNSIGNED_BYTE, _decodedBuffer);
         // текстуру нужно обновлять только после того, как декодировали кадр, иначе будет черный экран
     }
 
