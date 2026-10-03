@@ -1,9 +1,19 @@
 #include "WebMYUVConverter.h"
 
+#include <emmintrin.h>
+
 namespace xgen
 {
     namespace video
     {
+        namespace
+        {
+            inline int clampToByte(int value)
+            {
+                return (value < 0) ? 0 : ((value > 255) ? 255 : value);
+            }
+        }
+
         void yuv420ToRGBA(uint width, uint height,
                           const uint8_t *y, const uint8_t *u, const uint8_t *v,
                           unsigned int ystride, unsigned int ustride, unsigned int vstride,
@@ -11,35 +21,77 @@ namespace xgen
         {
             for (uint h = 0; h < height; h++)
             {
-                uint y_offset = h * ystride;
-                uint u_offset = (h / 2) * ustride;
-                uint v_offset = (h / 2) * vstride;
-                uint out_offset = h * width * 4;
+                const uint y_offset = h * ystride;
+                const uint u_offset = (h / 2) * ustride;
+                const uint v_offset = (h / 2) * vstride;
 
-                for (uint w = 0; w < width; w++)
+                uint x = 0;
+                for (; x + 3 < width; x += 4)
                 {
-                    uint y_val = y[y_offset + w];
-                    uint u_val = u[u_offset + w / 2];
-                    uint v_val = v[v_offset + w / 2];
+                    int y_vals[4];
+                    int u_vals[4];
+                    int v_vals[4];
 
-                    int u_centered = (int)u_val - 128;
-                    int v_centered = (int)v_val - 128;
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const uint pixel_x = x + i;
+                        y_vals[i] = y[y_offset + pixel_x];
+                        const uint sample_x = pixel_x >> 1;
+                        u_vals[i] = u[u_offset + sample_x];
+                        v_vals[i] = v[v_offset + sample_x];
+                    }
 
-                    int r = (int)y_val + (113983 * v_centered) / 100000;
-                    int g = (int)y_val - (39465 * u_centered) / 100000 - (58060 * v_centered) / 100000;
-                    int b = (int)y_val + (203211 * u_centered) / 100000;
+                    __m128i u_centered_vec = _mm_sub_epi32(_mm_setr_epi32(u_vals[0], u_vals[1], u_vals[2], u_vals[3]), _mm_set1_epi32(128));
+                    __m128i v_centered_vec = _mm_sub_epi32(_mm_setr_epi32(v_vals[0], v_vals[1], v_vals[2], v_vals[3]), _mm_set1_epi32(128));
 
-                    r = (r < 0) ? 0 : (r > 255) ? 255
-                                                : r;
-                    g = (g < 0) ? 0 : (g > 255) ? 255
-                                                : g;
-                    b = (b < 0) ? 0 : (b > 255) ? 255
-                                                : b;
+                    int u_centered[4];
+                    int v_centered[4];
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(u_centered), u_centered_vec);
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(v_centered), v_centered_vec);
 
-                    out[out_offset + w * 4 + 0] = (unsigned char)r;
-                    out[out_offset + w * 4 + 1] = (unsigned char)g;
-                    out[out_offset + w * 4 + 2] = (unsigned char)b;
-                    out[out_offset + w * 4 + 3] = 255;
+                    int r[4];
+                    int g[4];
+                    int b[4];
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const int u_c = u_centered[i];
+                        const int v_c = v_centered[i];
+
+                        r[i] = clampToByte(static_cast<int>(y_vals[i]) + (113983 * v_c) / 100000);
+                        g[i] = clampToByte(static_cast<int>(y_vals[i]) - (39465 * u_c) / 100000 - (58060 * v_c) / 100000);
+                        b[i] = clampToByte(static_cast<int>(y_vals[i]) + (203211 * u_c) / 100000);
+                    }
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const uint pixel_x = x + i;
+                        const uint out_offset = (h * width + pixel_x) * 4;
+                        out[out_offset + 0] = static_cast<unsigned char>(r[i]);
+                        out[out_offset + 1] = static_cast<unsigned char>(g[i]);
+                        out[out_offset + 2] = static_cast<unsigned char>(b[i]);
+                        out[out_offset + 3] = 255;
+                    }
+                }
+
+                for (; x < width; x++)
+                {
+                    const uint y_val = y[y_offset + x];
+                    const uint u_val = u[u_offset + (x / 2)];
+                    const uint v_val = v[v_offset + (x / 2)];
+
+                    const int u_centered = static_cast<int>(u_val) - 128;
+                    const int v_centered = static_cast<int>(v_val) - 128;
+
+                    const int r_val = static_cast<int>(y_val) + (113983 * v_centered) / 100000;
+                    const int g_val = static_cast<int>(y_val) - (39465 * u_centered) / 100000 - (58060 * v_centered) / 100000;
+                    const int b_val = static_cast<int>(y_val) + (203211 * u_centered) / 100000;
+
+                    const uint out_offset = (h * width + x) * 4;
+                    out[out_offset + 0] = static_cast<unsigned char>(clampToByte(r_val));
+                    out[out_offset + 1] = static_cast<unsigned char>(clampToByte(g_val));
+                    out[out_offset + 2] = static_cast<unsigned char>(clampToByte(b_val));
+                    out[out_offset + 3] = 255;
                 }
             }
         }
@@ -51,37 +103,81 @@ namespace xgen
         {
             for (uint h = 0; h < height; h++)
             {
-                uint y_offset = h * ystride;
-                uint u_offset = (h / 2) * ustride;
-                uint v_offset = (h / 2) * vstride;
-                uint a_offset = h * astride;
-                uint out_offset = h * width * 4;
+                const uint y_offset = h * ystride;
+                const uint u_offset = (h / 2) * ustride;
+                const uint v_offset = (h / 2) * vstride;
+                const uint a_offset = h * astride;
 
-                for (uint w = 0; w < width; w++)
+                uint x = 0;
+                for (; x + 3 < width; x += 4)
                 {
-                    uint y_val = y[y_offset + w];
-                    uint u_val = u[u_offset + w / 2];
-                    uint v_val = v[v_offset + w / 2];
-                    uint a_val = a[a_offset + w];
+                    int y_vals[4];
+                    int u_vals[4];
+                    int v_vals[4];
+                    int a_vals[4];
 
-                    int u_centered = (int)u_val - 128;
-                    int v_centered = (int)v_val - 128;
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const uint pixel_x = x + i;
+                        y_vals[i] = y[y_offset + pixel_x];
+                        const uint sample_x = pixel_x >> 1;
+                        u_vals[i] = u[u_offset + sample_x];
+                        v_vals[i] = v[v_offset + sample_x];
+                        a_vals[i] = a[a_offset + pixel_x];
+                    }
 
-                    int r = (int)y_val + (113983 * v_centered) / 100000;
-                    int g = (int)y_val - (39465 * u_centered) / 100000 - (58060 * v_centered) / 100000;
-                    int b = (int)y_val + (203211 * u_centered) / 100000;
+                    __m128i u_centered_vec = _mm_sub_epi32(_mm_setr_epi32(u_vals[0], u_vals[1], u_vals[2], u_vals[3]), _mm_set1_epi32(128));
+                    __m128i v_centered_vec = _mm_sub_epi32(_mm_setr_epi32(v_vals[0], v_vals[1], v_vals[2], v_vals[3]), _mm_set1_epi32(128));
 
-                    r = (r < 0) ? 0 : (r > 255) ? 255
-                                                : r;
-                    g = (g < 0) ? 0 : (g > 255) ? 255
-                                                : g;
-                    b = (b < 0) ? 0 : (b > 255) ? 255
-                                                : b;
+                    int u_centered[4];
+                    int v_centered[4];
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(u_centered), u_centered_vec);
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(v_centered), v_centered_vec);
 
-                    out[out_offset + w * 4 + 0] = (unsigned char)r;
-                    out[out_offset + w * 4 + 1] = (unsigned char)g;
-                    out[out_offset + w * 4 + 2] = (unsigned char)b;
-                    out[out_offset + w * 4 + 3] = (unsigned char)a_val;
+                    int r[4];
+                    int g[4];
+                    int b[4];
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const int u_c = u_centered[i];
+                        const int v_c = v_centered[i];
+
+                        r[i] = clampToByte(static_cast<int>(y_vals[i]) + (113983 * v_c) / 100000);
+                        g[i] = clampToByte(static_cast<int>(y_vals[i]) - (39465 * u_c) / 100000 - (58060 * v_c) / 100000);
+                        b[i] = clampToByte(static_cast<int>(y_vals[i]) + (203211 * u_c) / 100000);
+                    }
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const uint pixel_x = x + i;
+                        const uint out_offset = (h * width + pixel_x) * 4;
+                        out[out_offset + 0] = static_cast<unsigned char>(r[i]);
+                        out[out_offset + 1] = static_cast<unsigned char>(g[i]);
+                        out[out_offset + 2] = static_cast<unsigned char>(b[i]);
+                        out[out_offset + 3] = static_cast<unsigned char>(a_vals[i]);
+                    }
+                }
+
+                for (; x < width; x++)
+                {
+                    const uint y_val = y[y_offset + x];
+                    const uint u_val = u[u_offset + (x / 2)];
+                    const uint v_val = v[v_offset + (x / 2)];
+                    const uint a_val = a[a_offset + x];
+
+                    const int u_centered = static_cast<int>(u_val) - 128;
+                    const int v_centered = static_cast<int>(v_val) - 128;
+
+                    const int r_val = static_cast<int>(y_val) + (113983 * v_centered) / 100000;
+                    const int g_val = static_cast<int>(y_val) - (39465 * u_centered) / 100000 - (58060 * v_centered) / 100000;
+                    const int b_val = static_cast<int>(y_val) + (203211 * u_centered) / 100000;
+
+                    const uint out_offset = (h * width + x) * 4;
+                    out[out_offset + 0] = static_cast<unsigned char>(clampToByte(r_val));
+                    out[out_offset + 1] = static_cast<unsigned char>(clampToByte(g_val));
+                    out[out_offset + 2] = static_cast<unsigned char>(clampToByte(b_val));
+                    out[out_offset + 3] = static_cast<unsigned char>(a_val);
                 }
             }
         }
@@ -93,34 +189,75 @@ namespace xgen
         {
             for (uint h = 0; h < height; h++)
             {
-                uint y_offset = h * ystride;
-                uint u_offset = (h / 2) * ustride;
-                uint v_offset = (h / 2) * vstride;
-                uint out_offset = h * width * 3;
+                const uint y_offset = h * ystride;
+                const uint u_offset = (h / 2) * ustride;
+                const uint v_offset = (h / 2) * vstride;
 
-                for (uint w = 0; w < width; w++)
+                uint x = 0;
+                for (; x + 3 < width; x += 4)
                 {
-                    uint y_val = y[y_offset + w];
-                    uint u_val = u[u_offset + w / 2];
-                    uint v_val = v[v_offset + w / 2];
+                    int y_vals[4];
+                    int u_vals[4];
+                    int v_vals[4];
 
-                    int u_centered = (int)u_val - 128;
-                    int v_centered = (int)v_val - 128;
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const uint pixel_x = x + i;
+                        y_vals[i] = y[y_offset + pixel_x];
+                        const uint sample_x = pixel_x >> 1;
+                        u_vals[i] = u[u_offset + sample_x];
+                        v_vals[i] = v[v_offset + sample_x];
+                    }
 
-                    int r = (int)y_val + (113983 * v_centered) / 100000;
-                    int g = (int)y_val - (39465 * u_centered) / 100000 - (58060 * v_centered) / 100000;
-                    int b = (int)y_val + (203211 * u_centered) / 100000;
+                    __m128i u_centered_vec = _mm_sub_epi32(_mm_setr_epi32(u_vals[0], u_vals[1], u_vals[2], u_vals[3]), _mm_set1_epi32(128));
+                    __m128i v_centered_vec = _mm_sub_epi32(_mm_setr_epi32(v_vals[0], v_vals[1], v_vals[2], v_vals[3]), _mm_set1_epi32(128));
 
-                    r = (r < 0) ? 0 : (r > 255) ? 255
-                                                : r;
-                    g = (g < 0) ? 0 : (g > 255) ? 255
-                                                : g;
-                    b = (b < 0) ? 0 : (b > 255) ? 255
-                                                : b;
+                    int u_centered[4];
+                    int v_centered[4];
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(u_centered), u_centered_vec);
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(v_centered), v_centered_vec);
 
-                    out[out_offset + w * 3 + 0] = (unsigned char)r;
-                    out[out_offset + w * 3 + 1] = (unsigned char)g;
-                    out[out_offset + w * 3 + 2] = (unsigned char)b;
+                    int r[4];
+                    int g[4];
+                    int b[4];
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const int u_c = u_centered[i];
+                        const int v_c = v_centered[i];
+
+                        r[i] = clampToByte(static_cast<int>(y_vals[i]) + (113983 * v_c) / 100000);
+                        g[i] = clampToByte(static_cast<int>(y_vals[i]) - (39465 * u_c) / 100000 - (58060 * v_c) / 100000);
+                        b[i] = clampToByte(static_cast<int>(y_vals[i]) + (203211 * u_c) / 100000);
+                    }
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        const uint pixel_x = x + i;
+                        const uint out_offset = (h * width + pixel_x) * 3;
+                        out[out_offset + 0] = static_cast<unsigned char>(r[i]);
+                        out[out_offset + 1] = static_cast<unsigned char>(g[i]);
+                        out[out_offset + 2] = static_cast<unsigned char>(b[i]);
+                    }
+                }
+
+                for (; x < width; x++)
+                {
+                    const uint y_val = y[y_offset + x];
+                    const uint u_val = u[u_offset + (x / 2)];
+                    const uint v_val = v[v_offset + (x / 2)];
+
+                    const int u_centered = static_cast<int>(u_val) - 128;
+                    const int v_centered = static_cast<int>(v_val) - 128;
+
+                    const int r_val = static_cast<int>(y_val) + (113983 * v_centered) / 100000;
+                    const int g_val = static_cast<int>(y_val) - (39465 * u_centered) / 100000 - (58060 * v_centered) / 100000;
+                    const int b_val = static_cast<int>(y_val) + (203211 * u_centered) / 100000;
+
+                    const uint out_offset = (h * width + x) * 3;
+                    out[out_offset + 0] = static_cast<unsigned char>(clampToByte(r_val));
+                    out[out_offset + 1] = static_cast<unsigned char>(clampToByte(g_val));
+                    out[out_offset + 2] = static_cast<unsigned char>(clampToByte(b_val));
                 }
             }
         }
@@ -130,13 +267,29 @@ namespace xgen
         {
             for (uint h = 0; h < height; h++)
             {
-                uint a_offset = h * ystride;
-                uint out_offset = h * width * 4;
+                const uint a_offset = h * ystride;
 
-                for (uint w = 0; w < width; w++)
+                uint x = 0;
+                for (; x + 3 < width; x += 4)
                 {
-                    uint a_val = a[a_offset + w];
-                    out[out_offset + w * 4 + 3] = (unsigned char)a_val;
+                    const __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i *>(a + a_offset + x));
+                    const __m128i alpha_values = _mm_unpacklo_epi8(src, _mm_setzero_si128());
+
+                    unsigned char tmp[16];
+                    _mm_storeu_si128(reinterpret_cast<__m128i *>(tmp), alpha_values);
+
+                    const uint out_offset = (h * width + x) * 4;
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        out[out_offset + i * 4 + 3] = tmp[i * 2];
+                    }
+                }
+
+                for (; x < width; x++)
+                {
+                    const uint a_val = a[a_offset + x];
+                    const uint out_offset = (h * width + x) * 4;
+                    out[out_offset + 3] = static_cast<unsigned char>(a_val);
                 }
             }
         }
