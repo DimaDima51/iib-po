@@ -1,11 +1,11 @@
 #include "WebMVideoDecoder.h"
 #include <chrono>
+#include <vector>
 #include <GL/glew.h> // для поддержки расширений, шейдеров и так далее
 #include "WebMYUVConverter.h"
 extern "C"
 {
 #define HAVE_STDINT_H 1
-#include <vector>
 }
 
 using namespace std;
@@ -344,7 +344,104 @@ int WebMVideoDecoder::initializeCodec()
     _decodedBufferSize = 0;
     _bufferStride = 4;
     _decodedBufferSize = _bufferStride * _nestegVideoParams.width * _nestegVideoParams.height;
-    /*if (_withAlpha) {   // TODO: Сейчас поддержка отрисовки только с альфой
+    /*if (_withAlpha) {   // TODO: Сейчас поддержка отрисовки только с альфой/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:427:3: error: templates must have C++ linkage
+  427 |   template<typename _Tp, typename _Alloc = std::allocator<_Tp> >
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:428:30: error: no template named '_Vector_base'
+  428 |     class vector : protected _Vector_base<_Tp, _Alloc>
+      |                              ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2040:22: error: no template named 'vector'
+ 2040 |     operator==(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                      ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2040:54: error: no template named 'vector'
+ 2040 |     operator==(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                                                      ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2037:3: error: templates must have C++ linkage
+ 2037 |   template<typename _Tp, typename _Alloc>
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2079:21: error: no template named 'vector'
+ 2079 |     operator<(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                     ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2079:53: error: no template named 'vector'
+ 2079 |     operator<(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                                                     ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2077:3: error: templates must have C++ linkage
+ 2077 |   template<typename _Tp, typename _Alloc>
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2086:22: error: no template named 'vector'
+ 2086 |     operator!=(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                      ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2086:54: error: no template named 'vector'
+ 2086 |     operator!=(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                                                      ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2084:3: error: templates must have C++ linkage
+ 2084 |   template<typename _Tp, typename _Alloc>
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2092:21: error: no template named 'vector'
+ 2092 |     operator>(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                     ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2092:53: error: no template named 'vector'
+ 2092 |     operator>(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                                                     ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2090:3: error: templates must have C++ linkage
+ 2090 |   template<typename _Tp, typename _Alloc>
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2098:22: error: no template named 'vector'
+ 2098 |     operator<=(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                      ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2098:54: error: no template named 'vector'
+ 2098 |     operator<=(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                                                      ^
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2096:3: error: templates must have C++ linkage
+ 2096 |   template<typename _Tp, typename _Alloc>
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:5:1: note: extern "C" language linkage specification begins here
+    5 | extern "C"
+      | ^
+In file included from /home/dmitry/lii-po/WebM_Practice/src/WebMVideoDecoder.cpp:8:
+In file included from /usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/vector:66:
+/usr/bin/../lib/gcc/x86_64-linux-gnu/13/../../../../include/c++/13/bits/stl_vector.h:2104:22: error: no template named 'vector'
+ 2104 |     operator>=(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
+      |                      ^
+fatal error: too many errors emitted, stopping now [-ferror-limit=]
+20 errors generated.
+make[3]: *** [CMakeFiles/WebM_Player.dir/build.make:118: CMakeFiles/WebM_Player.dir/src/WebMVideoDecoder.cpp.o] Ошибка 1
+make[3]: выход из каталога «/home/dmitry/lii-po/WebM_Practice/build/Linux»
+make[2]: *** [CMakeFiles/Makefile2:292: CMakeFiles/WebM_Player.dir/all] Ошибка 2
+make[2]: выход из каталога «/home/dmitry/lii-po/WebM_Practice/build/Linux»
+make[1]: *** [Makefile:146: all] Ошибка 2
+make[1]: выход из каталога «/home/dmitry/lii-po/WebM_Practice/build/Linux»
+make: *** [Makefile:22: LINUX] Ошибка 2
         _bufferStride = 4;
         _decodedBufferSize = _bufferStride * _nestegVideoParams.width * _nestegVideoParams.height;
     }else{
