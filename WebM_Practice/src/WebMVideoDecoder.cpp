@@ -437,7 +437,7 @@ void WebMVideoDecoder::decodeNewFrame(){
                 vpx_codec_iter_t alphaIter = nullptr;
                 vpx_image_t* alphaImage = vpx_codec_get_frame(&_alphaCodec, &alphaIter);
                 assert(alphaImage != nullptr);
-
+                
                 yuv420ToRGBA(_nestegVideoParams.width, _nestegVideoParams.height, image->planes[VPX_PLANE_Y],
                 image->planes[VPX_PLANE_U], image->planes[VPX_PLANE_V], image->stride[VPX_PLANE_Y],
                 image->stride[VPX_PLANE_U], image->stride[VPX_PLANE_V], _decodedBuffer);

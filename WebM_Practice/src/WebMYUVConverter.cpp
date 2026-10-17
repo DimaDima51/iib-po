@@ -13,12 +13,12 @@ void yuv420ToRGBA(uint width, uint height,
         #pragma clang loop vectorize(enable)
         for (uint i = 0; i < width; ++i) {
             double Y = yRow[i];
-            double U = uRow[i / 2] - 128.0;
-            double V = vRow[i / 2] - 128.0;
+            double U = uRow[i / 2] - 128;
+            double V = vRow[i / 2] - 128;
 
-            double R = Y + 1.13983 * V;
-            double G = Y - 0.39465 * U - 0.58060 * V;
-            double B = Y + 2.03211 * U;
+            double R = Y + 113983 * V / 100000;
+            double G = Y - 39465 * U / 100000 - 58060 * V / 100000;
+            double B = Y + 203211 * U / 100000;
 
             outRow[i * 4 + 0] = (unsigned char)R;
             outRow[i * 4 + 1] = (unsigned char)G;
@@ -42,12 +42,12 @@ void yuv420AToRGBA(uint width, uint height,
         #pragma clang loop vectorize(enable)
         for (uint i = 0; i < width; ++i) {
             double Y = yRow[i];
-            double U = uRow[i / 2] - 128.0;
-            double V = vRow[i / 2] - 128.0;
+            double U = uRow[i / 2] - 128;
+            double V = vRow[i / 2] - 128;
 
-            double R = Y + 1.13983 * V;
-            double G = Y - 0.39465 * U - 0.58060 * V;
-            double B = Y + 2.03211 * U;
+            double R = Y + 113983 * V / 100000;
+            double G = Y - 39465 * U / 100000 - 58060 * V / 100000;
+            double B = Y + 203211 * U / 100000;
 
             outRow[i * 4 + 0] = (unsigned char)R;
             outRow[i * 4 + 1] = (unsigned char)G;
@@ -70,12 +70,12 @@ void yuv420ToRGB(uint width, uint height,
         #pragma clang loop vectorize(enable)
         for (uint i = 0; i < width; ++i) {
             double Y = yRow[i];
-            double U = uRow[i / 2] - 128.0;
-            double V = vRow[i / 2] - 128.0;
+            double U = uRow[i / 2] - 128;
+            double V = vRow[i / 2] - 128;
 
-            double R = Y + 1.13983 * V;
-            double G = Y - 0.39465 * U - 0.58060 * V;
-            double B = Y + 2.03211 * U;
+            double R = Y + 113983 * V / 100000;
+            double G = Y - 39465 * U / 100000 - 58060 * V / 100000;
+            double B = Y + 203211 * U / 100000;
 
             outRow[i * 4 + 0] = (unsigned char)R;
             outRow[i * 4 + 1] = (unsigned char)G;
@@ -95,16 +95,12 @@ void yToA(uint width, uint height,
 
 /*
 
-R = Y + 1,13983 * (V - 128);
-G = Y - 0,39465 * (U - 128) - 0,58060 * (V - 128);
-B = Y + 2,03211 * (U - 128);
-Y = 0,299 * R + 0,587 * G + 0,114 * B;
-U = -0,14713 * R - 0,28886 * G + 0,436 * B + 128;
-V = 0,615 * R - 0,51499 * G - 0,10001 * B + 128
+R = Y + 113983 * (V - 128) / 100000;
+G = Y - 39465 * (U - 128) / 100000 - 58060 * (V - 128) / 100000;
+B = Y + 203211 * (U - 128) / 100000;
+Y = 299 * R / 1000 + 587 * G / 1000 + 114 * B / 1000;
+U = -14713 * R / 100000 - 28886 * G / 100000 + 436 * B / 1000 + 128;
+V = 615 * R / 1000 - 51499 * G / 100000 - 10001 * B / 100000 + 128
 
 Для вычислений лучше домножить на 100000 и потом делить на 100000, чтобы не было потери точности!!!
 */
-
-// Уже сделано : flamegraph без целых чисел
-// Потом flamegraph с целыми числами
-// Потом с SIMD приколами
