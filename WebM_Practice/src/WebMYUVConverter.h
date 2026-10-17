@@ -1,9 +1,6 @@
 #ifndef VIDEO_DECODER_COLOR_CONVERTER
 #define VIDEO_DECODER_COLOR_CONVERTER
 
-namespace xgen {
-namespace video {
-
 typedef unsigned int uint;
 typedef unsigned char uint8_t;
 
@@ -28,7 +25,5 @@ void yToA(uint width, uint height,
                  unsigned int ystride,
                  unsigned char* out);
 
-}
-}
 
 #endif

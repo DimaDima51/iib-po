@@ -47,9 +47,9 @@ DrawManager::~DrawManager(){
 
 void DrawManager::createDecoder(){
 #ifdef _WIN32
-    std::string filePath = "res\\big-buck-bunny_trailer.webm";
+    std::string filePath = "res\\elephants-dream.webm";
 #else
-    std::string filePath = "res/big-buck-bunny_trailer.webm";
+    std::string filePath = "res/elephants-dream.webm";
 #endif
     _decoder = make_shared<WebMVideoDecoder>(filePath);
     
